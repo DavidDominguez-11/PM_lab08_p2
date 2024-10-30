@@ -2,56 +2,123 @@ package com.dom.lab8market
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-//import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
+import java.io.File
 
 @Composable
 fun AddSupermarketItem(
-    onAddItem: (String, Int, String?) -> Unit,
-    onCaptureImage: () -> Unit,
-    imagePath: String? = null
+    onAddItem: (name: String, quantity: String, imagePath: String) -> Unit,
+    onCaptureImage: () -> Unit
 ) {
-    var itemName by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+    var currentImagePath by remember { mutableStateOf<String?>(null) }
+    var showCamera by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         TextField(
-            value = itemName,
-            onValueChange = { itemName = it },
-            label = { Text("Nombre del artículo") }
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Nombre del producto") },
+            modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         TextField(
             value = quantity,
-            onValueChange = { quantity = it },
+            onValueChange = {
+                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                    quantity = it
+                    isError = false
+                } else {
+                    isError = true
+                }
+            },
             label = { Text("Cantidad") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+            modifier = Modifier.fillMaxWidth(),
+            isError = isError,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
 
-        if (imagePath != null) {
-            // Mostrar imagen si está disponible
+        if (isError) {
+            Text(
+                text = "Por favor, ingrese solo números",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 16.dp)
+            )
         }
 
-        Button(onClick = onCaptureImage) {
-            Text("Capturar Imagen")
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Display captured image if available
+        currentImagePath?.let { path ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(8.dp)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(File(path)),
+                    contentDescription = "Captured image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
         }
 
-        Button(onClick = {
-            onAddItem(itemName, quantity.toIntOrNull() ?: 0, imagePath)
-        }) {
-            Text("Agregar Artículo")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(
+                onClick = { showCamera = true }
+            ) {
+                Text("Tomar Foto")
+            }
+
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && quantity.isNotBlank() && !isError) {
+                        onAddItem(name, quantity, currentImagePath ?: "")
+                        name = ""
+                        quantity = ""
+                        currentImagePath = null
+                    }
+                }
+            ) {
+                Text("Agregar Item")
+            }
         }
+    }
+
+    if (showCamera) {
+        CameraCaptureDialog(
+            onImageCaptured = { path ->
+                currentImagePath = path
+                showCamera = false
+            }
+        )
+    }
+}
+
+@Composable
+fun CameraCaptureDialog(onImageCaptured: (String?) -> Unit) {
+    Dialog(onDismissRequest = { onImageCaptured(null) }) {
+        CameraCapture(onImageCaptured = onImageCaptured)
     }
 }

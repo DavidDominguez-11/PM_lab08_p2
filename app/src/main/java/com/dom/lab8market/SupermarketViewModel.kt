@@ -12,8 +12,20 @@ class SupermarketViewModel(private val supermarketItemDao: SupermarketItemDao) :
 
     val items: Flow<List<SupermarketItem>> = supermarketItemDao.getAllItems()
 
-    fun addItem(itemName: String, quantity: Int, imagePath: String?) {
-        val item = SupermarketItem(itemName = itemName, quantity = quantity, imagePath = imagePath)
+    fun addItem(itemName: String, quantity: String, imagePath: String?) {
+        // Convertir la cantidad de String a Int, con manejo de errores
+        val quantityInt = try {
+            quantity.toInt()
+        } catch (e: NumberFormatException) {
+            0 // Valor por defecto si la conversión falla
+        }
+
+        val item = SupermarketItem(
+            itemName = itemName,
+            quantity = quantityInt,  // Ahora pasamos un Int
+            imagePath = imagePath
+        )
+
         viewModelScope.launch {
             supermarketItemDao.insertItem(item)
         }
